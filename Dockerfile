@@ -1,23 +1,30 @@
 FROM ubuntu:18.04
-# Alpine preferred but glibc is needed and popular workarounds don't do enough.
 
-ADD https://astuteinternet.dl.sourceforge.net/project/bacnet/bacnet-stack/bacnet-stack-0.8.6/bacnet-stack-0.8.6.tgz .
-ADD bacnet-wrapper /
-ADD simulator /
+# Install required packages
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get -y install build-essential \
-	&& tar zxf bacnet-stack-0.8.6.tgz \
-	&& cd bacnet-stack-0.8.6 \
-	&& make \
-	&& rm -f bin/*.txt bin/*.bat \
-        && mv bin/* /usr/local/bin \
-        && chmod a+x /bacnet-wrapper \
-	&& cd / \
-        && rm -rf /bacnet-stack* \
-	&& apt-get -y remove build-essential \
-        && apt-get -y autoremove \
-	&& apt-get -y autoclean
+# Download and extract BACnet stack
+RUN wget -O bacnet-stack-1.4.0.tgz https://downloads.sourceforge.net/project/bacnet/bacnet-stack/bacnet-stack-1.4.0/bacnet-stack-1.4.0.tgz \
+    && tar zxf bacnet-stack-1.4.0.tgz \
+    && cd bacnet-stack-1.4.0 \
+    && make \
+    && rm -f bin/*.txt bin/*.bat \
+    && mv bin/* /usr/local/bin \
+    && cd / \
+    && rm -rf bacnet-stack*
 
-EXPOSE 47808:47808/udp
+# Copy your wrapper and simulator into the image
+COPY bacnet-wrapper /
+COPY simulator /
+RUN chmod +x /bacnet-wrapper
+
+# Clean up
+RUN apt-get remove -y build-essential && apt-get autoremove -y && apt-get autoclean -y
+
+# Expose BACnet default UDP port
+EXPOSE 47808/udp
 
 CMD ["/bacnet-wrapper"]
